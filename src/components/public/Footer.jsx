@@ -20,7 +20,6 @@ export function Footer() {
           <Link href="https://github.com/nazavalente" className="transition hover:text-teal-200" aria-label="GitHub">
             <Github className="h-4 w-4" />
           </Link>
-          <Link href="/admin/login" className="text-xs transition hover:text-teal-200">Admin</Link>
         </div>
       </div>
     </footer>
