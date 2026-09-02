@@ -1,0 +1,30 @@
+node_modules
+.next
+out
+.vercel
+firebase-debug.log
+next-dev*.log
+next-start*.log
+
+# Env files and secrets — never commit real credentials
+.env
+.env*.local
+.env.development
+.env.production
+.env.test
+
+# Firebase / Google service account keys
+serviceAccountKey.json
+*firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+.firebase
+
+# Generic credential/key files
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+secrets.*.json
