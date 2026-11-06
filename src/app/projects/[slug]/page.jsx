@@ -1,10 +1,8 @@
-import { seedProjects } from "@/data/seedPortfolioData";
+import { staticProjectSlugs } from "@/lib/routes";
 import { ProjectDetailClient } from "./ProjectDetailClient";
 
 export function generateStaticParams() {
-  return seedProjects.map((project) => ({
-    slug: project.slug
-  }));
+  return staticProjectSlugs.map((slug) => ({ slug }));
 }
 
 export default async function ProjectDetailPage({ params }) {

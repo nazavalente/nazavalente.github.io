@@ -2,14 +2,5 @@
   "projects": {
     "default": "porto321"
   },
-  "targets": {
-    "porto321": {
-      "hosting": {
-        "portfolio": [
-          "nazavalente"
-        ]
-      }
-    }
-  },
   "etags": {}
 }

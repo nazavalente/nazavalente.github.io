@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, ExternalLink, Github, Layers3 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { projectHref } from "@/lib/routes";
 import { cleanPlaceholderArray, isPlaceholderValue } from "@/lib/utils";
 
 export function ProjectCard({ project }) {
@@ -58,7 +59,7 @@ export function ProjectCard({ project }) {
                   Open Live App <ExternalLink className="h-4 w-4" />
                 </Link>
               )}
-              <Link href={`/projects/${project.slug}/`} className="inline-flex items-center gap-2 text-sm font-semibold text-teal-200 hover:text-teal-100">
+              <Link href={projectHref(project.slug)} className="inline-flex items-center gap-2 text-sm font-semibold text-teal-200 hover:text-teal-100">
                 Details <ArrowUpRight className="h-4 w-4" />
               </Link>
             </div>

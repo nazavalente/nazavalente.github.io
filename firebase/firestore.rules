@@ -27,11 +27,15 @@ service cloud.firestore {
     }
 
     match /contactMessages/{messageId} {
-      allow create: if true
+      // Public create must match exactly what createContactMessage() in
+      // src/lib/firestore.js writes: no extra fields, unread, server timestamp.
+      allow create: if request.resource.data.keys().hasOnly(["name", "email", "subject", "message", "isRead", "createdAt"])
         && request.resource.data.name is string && request.resource.data.name.size() <= 100
         && request.resource.data.email is string && request.resource.data.email.size() <= 200
         && request.resource.data.subject is string && request.resource.data.subject.size() <= 200
-        && request.resource.data.message is string && request.resource.data.message.size() <= 5000;
+        && request.resource.data.message is string && request.resource.data.message.size() <= 5000
+        && request.resource.data.isRead == false
+        && request.resource.data.createdAt == request.time;
       allow read, update, delete: if isAdmin();
     }
 

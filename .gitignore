@@ -1,24 +1,29 @@
+# Dependencies & build output
 node_modules
 .next
 out
-.vercel
-firebase-debug.log
-next-dev*.log
-next-start*.log
+coverage
+
+# Logs & caches (next dev/start logs, firebase/firestore emulator logs, npm)
+*.log
+.eslintcache
+*.tsbuildinfo
 
 # Env files and secrets — never commit real credentials
+# (.env.local.example is the committed template)
 .env
 .env*.local
 .env.development
 .env.production
 .env.test
 
-# Firebase / Google service account keys
+# Firebase / Google service account keys & local CLI state
 serviceAccountKey.json
 *firebase-adminsdk*.json
 google-services.json
 GoogleService-Info.plist
 .firebase
+firebase-export-*
 
 # Generic credential/key files
 *.pem
@@ -28,3 +33,27 @@ GoogleService-Info.plist
 credentials.json
 secrets.json
 secrets.*.json
+
+# Private working notes (local only)
+TODO.md
+NOTES.md
+*.local.md
+
+# AI assistant / tooling config (local only)
+.claude/
+CLAUDE.md
+.mcp.json
+.cursor/
+.cursorrules
+.windsurfrules
+.aider*
+.continue/
+.github/copilot-instructions.md
+
+# Editor & OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

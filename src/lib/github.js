@@ -3,6 +3,12 @@ import { slugify } from "./utils";
 const GITHUB_USERNAME = "nazavalente";
 const GITHUB_API_URL = `https://api.github.com/users/${GITHUB_USERNAME}/repos?sort=updated&per_page=100`;
 
+// Forks and the special <username>/<username> profile-README repo are not
+// portfolio work, so they are left out of the synced lists.
+function isPortfolioRepo(repo) {
+  return !repo.fork && String(repo.name || "").toLowerCase() !== GITHUB_USERNAME.toLowerCase();
+}
+
 function inferCategory(repo) {
   const text = `${repo.name} ${repo.description || ""} ${repo.language || ""} ${(repo.topics || []).join(" ")}`.toLowerCase();
   if (text.includes("ai") || text.includes("artificial-intelligence")) return "AI";
@@ -114,14 +120,14 @@ async function fetchRawGitHubRepos() {
 export async function fetchPublicGitHubRepositories() {
   const repos = await fetchRawGitHubRepos();
   return repos
-    .filter((repo) => !repo.fork)
+    .filter(isPortfolioRepo)
     .map((repo, index) => mapGitHubRepoToRepository(repo, index + 1));
 }
 
 export async function fetchPublicGitHubProjects() {
   const repos = await fetchRawGitHubRepos();
   return repos
-    .filter((repo) => !repo.fork)
+    .filter(isPortfolioRepo)
     .map((repo, index) => mapGitHubRepoToProject(repo, index + 100));
 }
 

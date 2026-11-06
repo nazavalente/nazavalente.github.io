@@ -37,7 +37,7 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 ```
 
-Do not commit real Firebase credentials.
+Do not commit real Firebase credentials. (`NEXT_PUBLIC_*` values end up in the public JS bundle anyway; the Firestore/Storage rules are what protect the data.)
 
 ## Run Locally
 
@@ -47,6 +47,15 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+To check the production output exactly as GitHub Pages will serve it:
+
+```bash
+npm run build      # writes the static site to ./out
+npx serve@latest out
+```
+
+(`next start` is not used: the app is a static export, there is no Next.js server in production.)
 
 ## Firebase Setup
 
@@ -62,13 +71,16 @@ Admin authorization in `firebase/firestore.rules` and `firebase/storage.rules` c
 
 ## Deploy Firebase Rules
 
+`firebase.json` and `.firebaserc` (default project `porto321`) are already set up, so no `firebase init` is needed:
+
 ```bash
 npm install -g firebase-tools
 firebase login
-firebase init
 firebase deploy --only firestore:rules
 firebase deploy --only storage
 ```
+
+Firebase is used only for Auth, Firestore, and Storage. Hosting is **not** on Firebase — always deploy with `--only`, and note that the `porto321` project's default Hosting site serves a different app (RotaTL).
 
 ## Admin Dashboard
 
@@ -85,12 +97,23 @@ Visit `/admin/login`, sign in with the Firebase Auth admin account, then use:
 
 The dashboard has import buttons for detected seed data. Public pages read from Firestore, so import seed data or create records manually from admin pages.
 
-## Vercel Deployment
+## Deployment (GitHub Pages)
 
-1. Push the project to GitHub.
-2. Import it into Vercel.
-3. Add all `NEXT_PUBLIC_FIREBASE_*` variables in the Vercel project settings.
-4. Deploy.
+The site is a Next.js static export (`output: "export"` in `next.config.mjs`) served at `https://nazavalente.github.io`.
+
+- Every push to `main` runs `.github/workflows/deploy.yml`: `npm ci` → `npm run build` → upload `./out` → deploy to GitHub Pages. It can also be started manually (`workflow_dispatch`).
+- Repository settings: **Settings → Pages → Source = GitHub Actions**.
+- Add the six `NEXT_PUBLIC_FIREBASE_*` values under **Settings → Secrets and variables → Actions**.
+- `NEXT_PUBLIC_BASE_PATH` stays empty because this is the `<user>.github.io` repository (served from the domain root). Set it to `/<repo-name>` only if the site moves to a project repository.
+
+### Project detail URLs
+
+Static hosting can only serve pages that existed at build time:
+
+- Projects in `seedProjects` are pre-rendered at `/projects/<slug>/`.
+- Projects added later (admin dashboard / Firestore, or repos auto-synced from GitHub) open at `/projects/view/?slug=<slug>`, which loads the data in the browser.
+
+`projectHref()` in `src/lib/routes.js` picks the right URL, so always build project links with it.
 
 ## Notes
 

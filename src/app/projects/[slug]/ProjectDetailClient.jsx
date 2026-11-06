@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { seedProjects } from "@/data/seedPortfolioData";
 import { getCollection, getProjectBySlug } from "@/lib/firestore";
 import { fetchPublicGitHubProjectBySlug } from "@/lib/github";
+import { projectHref } from "@/lib/routes";
 import { cleanPlaceholderArray, cleanPlaceholderText, isPlaceholderValue } from "@/lib/utils";
 
 export function ProjectDetailClient({ slug }) {
@@ -36,6 +37,10 @@ export function ProjectDetailClient({ slug }) {
       .slice(0, 3);
 
     async function load() {
+      if (!slug) {
+        setLoading(false);
+        return;
+      }
       try {
         if (seedProject) {
           setProject(seedProject);
@@ -162,7 +167,7 @@ export function ProjectDetailClient({ slug }) {
                     <Badge>{item.category}</Badge>
                     <h3 className="mt-3 font-semibold text-white">{item.title}</h3>
                     <p className="mt-2 line-clamp-2 text-sm text-slate-400">{item.description}</p>
-                    <Link href={`/projects/${item.slug}/`} className="mt-4 inline-flex text-sm font-semibold text-teal-200">View details</Link>
+                    <Link href={projectHref(item.slug)} className="mt-4 inline-flex text-sm font-semibold text-teal-200">View details</Link>
                   </Card>
                 ))}
               </div>
