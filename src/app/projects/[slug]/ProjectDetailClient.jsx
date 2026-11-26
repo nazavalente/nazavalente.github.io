@@ -151,7 +151,7 @@ export function ProjectDetailClient({ slug }) {
                   <p className="mt-3 text-sm leading-6 text-slate-400">{cleanPlaceholderText(project.role, "Role details will be updated after contribution notes are verified.")}</p>
                   <p className="mt-3 text-sm leading-6 text-slate-400">
                     {hasLiveUrl && !hasGithub
-                      ? "The project is presented as a deployed live web app, with Firebase Hosting used as the deployment platform."
+                      ? "The project is presented as a deployed live web app."
                       : "Result or impact details will be added after they are documented."}
                   </p>
                 </Card>

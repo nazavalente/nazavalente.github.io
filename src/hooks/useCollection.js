@@ -14,6 +14,20 @@ const DEDUPED_COLLECTIONS = new Set([
   "certificates"
 ]);
 
+// Older admin edits stored `order` as a string, and Firestore sorts all numbers
+// before all strings, so re-sort numerically. Blank or invalid values go last.
+function orderValue(item) {
+  const raw = item.order;
+  if (typeof raw === "number") return raw;
+  const text = String(raw ?? "").trim();
+  const value = Number(text);
+  return text === "" || Number.isNaN(value) ? 999 : value;
+}
+
+function sortByOrder(items) {
+  return [...items].sort((a, b) => orderValue(a) - orderValue(b));
+}
+
 export function useCollection(collectionName, options = {}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +43,8 @@ export function useCollection(collectionName, options = {}) {
 
     try {
       setLoading(true);
-      const nextItems = await getCollection(collectionName, options);
+      const fetched = await getCollection(collectionName, options);
+      const nextItems = !options.orderBy || options.orderBy === "order" ? sortByOrder(fetched) : fetched;
       setItems(DEDUPED_COLLECTIONS.has(collectionName) ? uniqueByPortfolioIdentity(nextItems) : nextItems);
       setError("");
     } catch (err) {

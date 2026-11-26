@@ -57,12 +57,13 @@ export default function ProjectsPage() {
       <main className="section">
         <div className="container">
           <SectionHeader eyebrow="Projects" title="All portfolio projects." description="Search and filter selected work from GitHub repositories and local project metadata." />
-          <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_auto]">
+          {/* minmax(0, ...) lets the filter row scroll instead of squeezing the search box. */}
+          <div className="mb-6 grid gap-4 lg:grid-cols-[minmax(16rem,1fr)_minmax(0,2fr)]">
             <label className="relative">
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search projects..." className="focus-ring w-full rounded-xl border border-white/10 bg-white/7 py-3 pl-11 pr-4 text-sm text-white" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search projects..." aria-label="Search projects" className="focus-ring w-full rounded-xl border border-white/10 bg-white/7 py-3 pl-11 pr-4 text-sm text-white" />
             </label>
-            <div className="flex max-w-full gap-2 overflow-x-auto pb-2">
+            <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto pb-2">
               {filters.map((filter) => (
                 <button key={filter} onClick={() => setActive(filter)} className={`focus-ring shrink-0 rounded-full px-4 py-2 text-sm transition ${active === filter ? "bg-teal-300 text-slate-950" : "bg-white/8 text-slate-300 hover:bg-white/12"}`}>{filter}</button>
               ))}

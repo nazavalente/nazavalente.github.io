@@ -78,6 +78,10 @@ a {
   mask-composite: exclude;
 }
 
+.section-kicker {
+  @apply text-xs font-semibold uppercase tracking-[0.18em] text-teal-200;
+}
+
 .soft-grid {
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),

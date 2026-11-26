@@ -11,7 +11,6 @@ import {
   orderBy,
   query,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where
 } from "firebase/firestore";
@@ -73,10 +72,13 @@ export function createContactMessage(data) {
   });
 }
 
-export async function seedCollection(collectionName, rows) {
+// Adds rows whose identity key is not in Firestore yet. `knownRows` are treated
+// as already present too, e.g. the curated seed entries when syncing from
+// GitHub, so a generic auto-synced copy never shadows a hand-written one.
+export async function seedCollection(collectionName, rows, { knownRows = [] } = {}) {
   const database = requireDb();
   const existingRows = await getCollection(collectionName);
-  const existingKeys = new Set(existingRows.map(portfolioIdentityKey).filter(Boolean));
+  const existingKeys = new Set([...existingRows, ...knownRows].map(portfolioIdentityKey).filter(Boolean));
   const rowsToCreate = rows.filter((row) => {
     const key = portfolioIdentityKey(row);
     if (!key) return true;
@@ -135,11 +137,6 @@ export async function syncCollectionFromSeed(collectionName, rows) {
   }));
 
   return { created, updated };
-}
-
-export function markMessageRead(id, isRead = true) {
-  const database = requireDb();
-  return setDoc(doc(database, "contactMessages", id), { isRead, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 export async function deleteDuplicateDocuments(collectionName) {

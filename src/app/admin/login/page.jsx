@@ -13,20 +13,24 @@ export default function AdminLoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function submit(event) {
     event.preventDefault();
+    if (submitting) return;
     const nextErrors = {};
     if (!/^\S+@\S+\.\S+$/.test(form.email)) nextErrors.email = "Enter your Firebase Auth email.";
     if (form.password.length < 6) nextErrors.password = "Password must be at least 6 characters.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     try {
+      setSubmitting(true);
       setStatus("Signing in...");
       await loginAdmin(form.email, form.password);
       router.push("/admin/dashboard");
     } catch (error) {
       setStatus(error.message || "Login failed.");
+      setSubmitting(false);
     }
   }
 
@@ -39,9 +43,9 @@ export default function AdminLoginPage() {
           <p className="mt-2 text-sm text-slate-400">Use a Firebase Authentication email/password account.</p>
         </div>
         <form onSubmit={submit} className="grid gap-4">
-          <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={errors.email} />
-          <Input label="Password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} error={errors.password} />
-          <Button type="submit">Login</Button>
+          <Input label="Email" type="email" autoComplete="username" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} error={errors.email} />
+          <Input label="Password" type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} error={errors.password} />
+          <Button type="submit" disabled={submitting}>{submitting ? "Signing in..." : "Login"}</Button>
           {status && <p className="text-sm text-slate-300">{status}</p>}
         </form>
       </Card>

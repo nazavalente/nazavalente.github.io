@@ -6,9 +6,17 @@ service firebase.storage {
       return request.auth != null && request.auth.token.admin == true;
     }
 
+    // Admin uploads are project images and certificate files (see
+    // src/components/admin/UploadField.jsx): images or PDFs, at most 10 MB.
+    function isAllowedUpload() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
+    }
+
     match /{allPaths=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if isAdmin() && isAllowedUpload();
+      allow delete: if isAdmin();
     }
   }
 }

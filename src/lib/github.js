@@ -9,12 +9,20 @@ function isPortfolioRepo(repo) {
   return !repo.fork && String(repo.name || "").toLowerCase() !== GITHUB_USERNAME.toLowerCase();
 }
 
+// Whole-word / word-prefix matches. Plain substring checks misfired: "ai"
+// matched "tailwind", "detail", "email", "training"; "team" matched "steam".
+const AI_PATTERN = /\b(ai|artificial[\s-]intelligence)\b/;
+const ML_PATTERN = /\b(machine|classification|prediction|notebook)/;
+const DATA_PATTERN = /\b(data|analysis|visuali[sz]ation)/;
+const TEAM_PATTERN = /\b(mental|voices|team)/;
+
 function inferCategory(repo) {
   const text = `${repo.name} ${repo.description || ""} ${repo.language || ""} ${(repo.topics || []).join(" ")}`.toLowerCase();
-  if (text.includes("ai") || text.includes("artificial-intelligence")) return "AI";
-  if (text.includes("machine") || text.includes("classification") || text.includes("prediction") || text.includes("notebook")) return "Machine Learning";
-  if (text.includes("data") || text.includes("analysis") || text.includes("visualization")) return "Data Analysis";
-  if (text.includes("mental") || text.includes("voices") || text.includes("team")) return "Team Project";
+  // Names like "AIPROJECT" have no word break after "AI", so check the name prefix too.
+  if (AI_PATTERN.test(text) || /^ai/i.test(repo.name || "")) return "AI";
+  if (ML_PATTERN.test(text)) return "Machine Learning";
+  if (DATA_PATTERN.test(text)) return "Data Analysis";
+  if (TEAM_PATTERN.test(text)) return "Team Project";
   if (["html", "css", "javascript", "typescript"].includes(String(repo.language || "").toLowerCase())) return "Web Development";
   return "Academic Project";
 }
@@ -56,7 +64,8 @@ export function mapGitHubRepoToProject(repo, order = 0) {
     role: "Project owner or contributor.",
     status: "Auto-synced from GitHub",
     githubUrl: repo.html_url,
-    liveUrl: repo.homepage || "",
+    // Only real web links become a "Live Demo" button.
+    liveUrl: /^https?:\/\//i.test(repo.homepage || "") ? repo.homepage : "",
     imageUrl: "",
     createdYear: repo.created_at ? String(new Date(repo.created_at).getFullYear()) : "",
     isFeatured: false,

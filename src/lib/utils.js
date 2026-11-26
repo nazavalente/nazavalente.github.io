@@ -19,12 +19,6 @@ export function normalizeArray(value) {
     .filter(Boolean);
 }
 
-export function formatDate(value) {
-  if (!value) return "Recently";
-  if (typeof value?.toDate === "function") return value.toDate().toLocaleDateString();
-  return String(value);
-}
-
 export function isPlaceholderValue(value) {
   if (!value) return true;
   if (Array.isArray(value)) return value.every(isPlaceholderValue);

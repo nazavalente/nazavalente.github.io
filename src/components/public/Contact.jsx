@@ -9,10 +9,21 @@ import { Textarea } from "@/components/ui/Textarea";
 import { createContactMessage } from "@/lib/firestore";
 import { SectionHeader } from "./SectionHeader";
 
+// Must stay in sync with the contactMessages rule in firebase/firestore.rules;
+// anything the rule rejects surfaces as a generic permission error.
+const LIMITS = {
+  name: { min: 2, max: 100 },
+  email: { max: 200 },
+  subject: { min: 3, max: 200 },
+  message: { min: 10, max: 5000 }
+};
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 export function Contact() {
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "", botField: "" });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function update(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -27,21 +38,35 @@ export function Contact() {
       setForm({ name: "", email: "", subject: "", message: "", botField: "" });
       return;
     }
+    if (submitting) return;
+    const payload = {
+      name: form.name.trim(),
+      email: form.email.trim(),
+      subject: form.subject.trim(),
+      message: form.message.trim()
+    };
     const nextErrors = {};
-    if (form.name.trim().length < 2) nextErrors.name = "Name must be at least 2 characters.";
-    if (!/^\S+@\S+\.\S+$/.test(form.email)) nextErrors.email = "Enter a valid email address.";
-    if (form.subject.trim().length < 3) nextErrors.subject = "Subject must be at least 3 characters.";
-    if (form.message.trim().length < 10) nextErrors.message = "Message must be at least 10 characters.";
+    if (payload.name.length < LIMITS.name.min) nextErrors.name = `Name must be at least ${LIMITS.name.min} characters.`;
+    if (payload.name.length > LIMITS.name.max) nextErrors.name = `Name must be at most ${LIMITS.name.max} characters.`;
+    if (!EMAIL_PATTERN.test(payload.email) || payload.email.length > LIMITS.email.max) nextErrors.email = "Enter a valid email address.";
+    if (payload.subject.length < LIMITS.subject.min) nextErrors.subject = `Subject must be at least ${LIMITS.subject.min} characters.`;
+    if (payload.subject.length > LIMITS.subject.max) nextErrors.subject = `Subject must be at most ${LIMITS.subject.max} characters.`;
+    if (payload.message.length < LIMITS.message.min) nextErrors.message = `Message must be at least ${LIMITS.message.min} characters.`;
+    if (payload.message.length > LIMITS.message.max) nextErrors.message = `Message must be at most ${LIMITS.message.max} characters.`;
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     try {
+      setSubmitting(true);
       setStatus("Saving your message...");
-      const { botField, ...payload } = form;
       await createContactMessage(payload);
       setForm({ name: "", email: "", subject: "", message: "", botField: "" });
       setStatus("Message saved successfully. I will follow up from the dashboard.");
     } catch (error) {
-      setStatus(error.message || "Could not send message.");
+      // Firebase errors are not meant for visitors; keep the detail in the console.
+      console.error("Contact form submission failed:", error);
+      setStatus("Could not send your message right now. Please try again later or email me directly.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -58,16 +83,16 @@ export function Contact() {
           </div>
         </div>
         <Card>
-          <form onSubmit={submit} className="grid gap-4">
+          <form onSubmit={submit} className="grid gap-4" noValidate>
             <div className="hidden" aria-hidden="true">
               <input type="text" name="botField" tabIndex={-1} value={form.botField} onChange={(e) => update("botField", e.target.value)} autoComplete="off" />
             </div>
-            <Input label="Name" value={form.name} onChange={(e) => update("name", e.target.value)} error={errors.name} />
-            <Input label="Email" value={form.email} onChange={(e) => update("email", e.target.value)} error={errors.email} />
-            <Input label="Subject" value={form.subject} onChange={(e) => update("subject", e.target.value)} error={errors.subject} />
-            <Textarea label="Message" value={form.message} onChange={(e) => update("message", e.target.value)} error={errors.message} />
-            <Button type="submit">Send Message</Button>
-            {status && <p className="text-sm text-slate-300">{status}</p>}
+            <Input label="Name" name="name" autoComplete="name" maxLength={LIMITS.name.max} value={form.name} onChange={(e) => update("name", e.target.value)} error={errors.name} />
+            <Input label="Email" name="email" type="email" autoComplete="email" maxLength={LIMITS.email.max} value={form.email} onChange={(e) => update("email", e.target.value)} error={errors.email} />
+            <Input label="Subject" name="subject" maxLength={LIMITS.subject.max} value={form.subject} onChange={(e) => update("subject", e.target.value)} error={errors.subject} />
+            <Textarea label="Message" name="message" maxLength={LIMITS.message.max} value={form.message} onChange={(e) => update("message", e.target.value)} error={errors.message} />
+            <Button type="submit" disabled={submitting}>{submitting ? "Sending..." : "Send Message"}</Button>
+            {status && <p className="text-sm text-slate-300" role="status">{status}</p>}
           </form>
         </Card>
       </div>

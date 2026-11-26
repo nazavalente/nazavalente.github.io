@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Plus, RefreshCw, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -21,8 +21,24 @@ export function CollectionManager({ title, collectionName, fields, seedRows = []
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState({ type: "", message: "" });
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
 
   const columns = useMemo(() => fields.filter((field) => field.table !== false).slice(0, 4).map((field) => ({ key: field.name, label: field.label })), [fields]);
+
+  // Runs one write at a time and ignores clicks meanwhile, so a double click
+  // cannot create or import the same rows twice.
+  async function runExclusive(task) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
+    try {
+      await task();
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  }
 
   function openForm(row = null) {
     setEditing(row);
@@ -59,75 +75,88 @@ export function CollectionManager({ title, collectionName, fields, seedRows = []
       let value = form[field.name] ?? "";
       if (field.type === "array") value = normalizeArray(value);
       if (field.type === "boolean") value = Boolean(value);
+      // Inputs return strings; Firestore sorts every number before every string,
+      // so a string order would push the item to the end of the list.
+      if (field.name === "order") value = String(value).trim() === "" ? 999 : Number(value);
       payload[field.name] = value;
     });
     if (payload.title && fields.some((field) => field.name === "slug") && !payload.slug) payload.slug = slugify(payload.title);
-    try {
-      setStatus({ type: "info", message: "Saving changes..." });
-      if (editing?.id) await updateDocument(collectionName, editing.id, payload);
-      else await createDocument(collectionName, payload);
-      setStatus({ type: "success", message: "Saved successfully." });
-      setOpen(false);
-      await reload();
-    } catch (err) {
-      setStatus({ type: "error", message: err.message || "Could not save item." });
-    }
+    await runExclusive(async () => {
+      try {
+        setStatus({ type: "info", message: "Saving changes..." });
+        if (editing?.id) await updateDocument(collectionName, editing.id, payload);
+        else await createDocument(collectionName, payload);
+        setStatus({ type: "success", message: "Saved successfully." });
+        setOpen(false);
+        await reload();
+      } catch (err) {
+        setStatus({ type: "error", message: err.message || "Could not save item." });
+      }
+    });
   }
 
   async function remove(row) {
     if (!confirm(`Delete "${row.title || row.name || row.role || row.subject}"?`)) return;
-    try {
-      await deleteDocument(collectionName, row.id);
-      setStatus({ type: "success", message: "Item deleted." });
-      await reload();
-    } catch (err) {
-      setStatus({ type: "error", message: err.message || "Could not delete item." });
-    }
+    await runExclusive(async () => {
+      try {
+        await deleteDocument(collectionName, row.id);
+        setStatus({ type: "success", message: "Item deleted." });
+        await reload();
+      } catch (err) {
+        setStatus({ type: "error", message: err.message || "Could not delete item." });
+      }
+    });
   }
 
   async function importSeed() {
     if (!seedRows.length) return;
     if (!confirm(`Import ${seedRows.length} seed rows into ${collectionName}?`)) return;
-    try {
-      setStatus({ type: "info", message: "Importing seed data..." });
-      const result = await seedCollection(collectionName, seedRows);
-      setStatus({
-        type: "success",
-        message: result.created ? `Imported ${result.created} new row${result.created === 1 ? "" : "s"}. Skipped ${result.skipped} existing row${result.skipped === 1 ? "" : "s"}.` : "All seed rows already exist. Nothing new was imported."
-      });
-      await reload();
-    } catch (err) {
-      setStatus({ type: "error", message: err.message || "Could not import seed data." });
-    }
+    await runExclusive(async () => {
+      try {
+        setStatus({ type: "info", message: "Importing seed data..." });
+        const result = await seedCollection(collectionName, seedRows);
+        setStatus({
+          type: "success",
+          message: result.created ? `Imported ${result.created} new row${result.created === 1 ? "" : "s"}. Skipped ${result.skipped} existing row${result.skipped === 1 ? "" : "s"}.` : "All seed rows already exist. Nothing new was imported."
+        });
+        await reload();
+      } catch (err) {
+        setStatus({ type: "error", message: err.message || "Could not import seed data." });
+      }
+    });
   }
 
   async function syncFromSeed() {
     if (!seedRows.length) return;
     if (!confirm(`Sync ${seedRows.length} seed rows into ${collectionName}? This adds missing rows and updates any field that changed in the seed file, without touching fields the seed leaves blank.`)) return;
-    try {
-      setStatus({ type: "info", message: "Syncing from seed data..." });
-      const result = await syncCollectionFromSeed(collectionName, seedRows);
-      setStatus({
-        type: "success",
-        message: result.created || result.updated ? `Created ${result.created} row${result.created === 1 ? "" : "s"}, updated ${result.updated} row${result.updated === 1 ? "" : "s"}.` : "Already up to date with the seed file."
-      });
-      await reload();
-    } catch (err) {
-      setStatus({ type: "error", message: err.message || "Could not sync seed data." });
-    }
+    await runExclusive(async () => {
+      try {
+        setStatus({ type: "info", message: "Syncing from seed data..." });
+        const result = await syncCollectionFromSeed(collectionName, seedRows);
+        setStatus({
+          type: "success",
+          message: result.created || result.updated ? `Created ${result.created} row${result.created === 1 ? "" : "s"}, updated ${result.updated} row${result.updated === 1 ? "" : "s"}.` : "Already up to date with the seed file."
+        });
+        await reload();
+      } catch (err) {
+        setStatus({ type: "error", message: err.message || "Could not sync seed data." });
+      }
+    });
   }
 
   async function removeDuplicates() {
     if (collectionName === "contactMessages") return;
     if (!confirm(`Remove duplicate rows from ${collectionName}? This keeps the first copy and deletes repeated entries.`)) return;
-    try {
-      setStatus({ type: "info", message: "Removing duplicate rows..." });
-      const deleted = await deleteDuplicateDocuments(collectionName);
-      setStatus({ type: "success", message: deleted ? `Removed ${deleted} duplicate row${deleted === 1 ? "" : "s"}.` : "No duplicates found." });
-      await reload();
-    } catch (err) {
-      setStatus({ type: "error", message: err.message || "Could not remove duplicates." });
-    }
+    await runExclusive(async () => {
+      try {
+        setStatus({ type: "info", message: "Removing duplicate rows..." });
+        const deleted = await deleteDuplicateDocuments(collectionName);
+        setStatus({ type: "success", message: deleted ? `Removed ${deleted} duplicate row${deleted === 1 ? "" : "s"}.` : "No duplicates found." });
+        await reload();
+      } catch (err) {
+        setStatus({ type: "error", message: err.message || "Could not remove duplicates." });
+      }
+    });
   }
 
   const statusStyles = {
@@ -144,9 +173,9 @@ export function CollectionManager({ title, collectionName, fields, seedRows = []
           <p className="mt-1 text-sm text-slate-400">Create, edit, delete, and keep this portfolio collection fresh.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {collectionName !== "contactMessages" && <Button variant="secondary" onClick={removeDuplicates}><Trash2 className="h-4 w-4" /> Remove Duplicates</Button>}
-          {seedRows.length > 0 && <Button variant="secondary" onClick={importSeed}><UploadCloud className="h-4 w-4" /> Import Seed</Button>}
-          {seedRows.length > 0 && <Button variant="secondary" onClick={syncFromSeed}><RefreshCw className="h-4 w-4" /> Sync from Seed</Button>}
+          {collectionName !== "contactMessages" && <Button variant="secondary" onClick={removeDuplicates} disabled={busy}><Trash2 className="h-4 w-4" /> Remove Duplicates</Button>}
+          {seedRows.length > 0 && <Button variant="secondary" onClick={importSeed} disabled={busy}><UploadCloud className="h-4 w-4" /> Import Seed</Button>}
+          {seedRows.length > 0 && <Button variant="secondary" onClick={syncFromSeed} disabled={busy}><RefreshCw className="h-4 w-4" /> Sync from Seed</Button>}
           <Button onClick={() => openForm()}><Plus className="h-4 w-4" /> New Item</Button>
         </div>
       </div>
@@ -166,12 +195,12 @@ export function CollectionManager({ title, collectionName, fields, seedRows = []
             if (field.type === "textarea") return <Textarea key={field.name} label={field.label} value={form[field.name] || ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} />;
             if (field.type === "array") return <Textarea key={field.name} label={`${field.label} (comma separated)`} value={Array.isArray(form[field.name]) ? form[field.name].join(", ") : form[field.name] || ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} />;
             if (field.type === "boolean") return <label key={field.name} className="flex items-center gap-3 text-sm text-slate-300"><input type="checkbox" checked={Boolean(form[field.name])} onChange={(e) => setValue(field.name, e.target.checked)} /> {field.label}</label>;
-            if (field.type === "upload") return <div key={field.name} className="grid gap-2"><Input label={field.label} value={form[field.name] || ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} /><UploadField label={`Upload ${field.label}`} folder={collectionName} onUploaded={(url) => setValue(field.name, url)} /></div>;
-            return <Input key={field.name} label={field.label} value={form[field.name] || ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} />;
+            if (field.type === "upload") return <div key={field.name} className="grid gap-2"><Input label={field.label} value={form[field.name] ?? ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} /><UploadField label={`Upload ${field.label}`} folder={collectionName} onUploaded={(url) => setValue(field.name, url)} /></div>;
+            return <Input key={field.name} label={field.label} value={form[field.name] ?? ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} />;
           })}
           <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:justify-end">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={busy}>{busy ? "Saving..." : "Save"}</Button>
           </Card>
         </form>
       </Modal>

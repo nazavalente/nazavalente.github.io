@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Build Next.js static export
         # NEXT_PUBLIC_* values are inlined into the public JS bundle; they are kept
         # in secrets for convenience, not secrecy. Firestore/Storage rules are what

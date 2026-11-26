@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { deleteDuplicateDocuments, getCollection, seedCollection } from "@/lib/firestore";
 import { fetchPublicGitHubProjects, fetchPublicGitHubRepositories } from "@/lib/github";
 import { uniqueByPortfolioIdentity } from "@/lib/utils";
-import { portfolioSeed } from "@/data/seedPortfolioData";
+import { portfolioSeed, seedProjects } from "@/data/seedPortfolioData";
 
 const stats = [
   ["projects", "Projects", FolderKanban],
@@ -18,10 +18,38 @@ const stats = [
   ["contactMessages", "Messages", MessageSquare]
 ];
 
+// One shared GitHub sync at a time, across renders and remounts. React
+// StrictMode runs mount effects twice in dev, and leaving/re-entering the
+// dashboard remounts it; two overlapping runs would both read Firestore before
+// either writes and insert the same new repos twice.
+let githubSyncInFlight = null;
+
+function runGithubSync() {
+  if (!githubSyncInFlight) {
+    githubSyncInFlight = (async () => {
+      const [projects, repositories] = await Promise.all([
+        fetchPublicGitHubProjects(),
+        fetchPublicGitHubRepositories()
+      ]);
+      // Public project pages always merge seedProjects over Firestore rows, so a
+      // generic GitHub copy of a curated seed project would replace its text.
+      const projectResult = await seedCollection("projects", projects, { knownRows: seedProjects });
+      const repoResult = await seedCollection("githubRepositories", repositories);
+      return {
+        created: projectResult.created + repoResult.created,
+        skipped: projectResult.skipped + repoResult.skipped
+      };
+    })().finally(() => {
+      githubSyncInFlight = null;
+    });
+  }
+  return githubSyncInFlight;
+}
+
 export default function DashboardPage() {
   const [counts, setCounts] = useState({});
   const [status, setStatus] = useState("");
-  const [syncingGithub, setSyncingGithub] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     const next = {};
@@ -36,24 +64,13 @@ export default function DashboardPage() {
     setCounts(next);
   }
 
-  useEffect(() => {
-    load();
-    syncGithubToFirestore({ silent: true });
-  }, []);
-
   async function syncGithubToFirestore({ silent = false } = {}) {
-    if (syncingGithub) return;
     try {
-      setSyncingGithub(true);
-      if (!silent) setStatus("Syncing public GitHub repositories...");
-      const [projects, repositories] = await Promise.all([
-        fetchPublicGitHubProjects(),
-        fetchPublicGitHubRepositories()
-      ]);
-      const projectResult = await seedCollection("projects", projects);
-      const repoResult = await seedCollection("githubRepositories", repositories);
-      const created = projectResult.created + repoResult.created;
-      const skipped = projectResult.skipped + repoResult.skipped;
+      if (!silent) {
+        setBusy(true);
+        setStatus("Syncing public GitHub repositories...");
+      }
+      const { created, skipped } = await runGithubSync();
       if (!silent || created > 0) {
         setStatus(created ? `Synced ${created} new GitHub rows. Skipped ${skipped} existing rows.` : "GitHub repositories are already synced.");
       }
@@ -61,33 +78,56 @@ export default function DashboardPage() {
     } catch (err) {
       if (!silent) setStatus(err.message || "Could not sync GitHub repositories.");
     } finally {
-      setSyncingGithub(false);
+      if (!silent) setBusy(false);
     }
   }
 
+  useEffect(() => {
+    load();
+    syncGithubToFirestore({ silent: true });
+    // Runs once on mount; both helpers only read module state and setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function importAll() {
     if (!confirm("Import all detected seed data into Firestore?")) return;
-    setStatus("Importing seed data...");
-    let created = 0;
-    let skipped = 0;
-    for (const [collection, rows] of Object.entries(portfolioSeed)) {
-      const result = await seedCollection(collection, rows);
-      created += result.created;
-      skipped += result.skipped;
+    try {
+      setBusy(true);
+      setStatus("Importing seed data...");
+      // Let a background GitHub sync finish first so both never insert the same rows.
+      if (githubSyncInFlight) await githubSyncInFlight.catch(() => {});
+      let created = 0;
+      let skipped = 0;
+      for (const [collection, rows] of Object.entries(portfolioSeed)) {
+        const result = await seedCollection(collection, rows);
+        created += result.created;
+        skipped += result.skipped;
+      }
+      setStatus(created ? `Imported ${created} new rows. Skipped ${skipped} existing rows.` : "All seed data already exists. Nothing new was imported.");
+      await load();
+    } catch (err) {
+      setStatus(err.message || "Could not import seed data.");
+    } finally {
+      setBusy(false);
     }
-    setStatus(created ? `Imported ${created} new rows. Skipped ${skipped} existing rows.` : "All seed data already exists. Nothing new was imported.");
-    await load();
   }
 
   async function removeAllDuplicates() {
     if (!confirm("Remove duplicate rows from all portfolio collections? This keeps the first copy of each item.")) return;
-    setStatus("Removing duplicate rows...");
-    let deleted = 0;
-    for (const collection of Object.keys(portfolioSeed)) {
-      deleted += await deleteDuplicateDocuments(collection);
+    try {
+      setBusy(true);
+      setStatus("Removing duplicate rows...");
+      let deleted = 0;
+      for (const collection of Object.keys(portfolioSeed)) {
+        deleted += await deleteDuplicateDocuments(collection);
+      }
+      setStatus(deleted ? `Removed ${deleted} duplicate rows.` : "No duplicates found.");
+      await load();
+    } catch (err) {
+      setStatus(err.message || "Could not remove duplicates.");
+    } finally {
+      setBusy(false);
     }
-    setStatus(deleted ? `Removed ${deleted} duplicate rows.` : "No duplicates found.");
-    await load();
   }
 
   return (
@@ -99,9 +139,9 @@ export default function DashboardPage() {
             <p className="mt-2 text-sm text-slate-400">Manage public content, media uploads, and contact messages from Firestore.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={removeAllDuplicates}><Trash2 className="h-4 w-4" /> Remove All Duplicates</Button>
-            <Button variant="secondary" onClick={() => syncGithubToFirestore()}><Github className="h-4 w-4" /> Sync GitHub</Button>
-            <Button onClick={importAll}><UploadCloud className="h-4 w-4" /> Import Detected Seed Data</Button>
+            <Button variant="secondary" onClick={removeAllDuplicates} disabled={busy}><Trash2 className="h-4 w-4" /> Remove All Duplicates</Button>
+            <Button variant="secondary" onClick={() => syncGithubToFirestore()} disabled={busy}><Github className="h-4 w-4" /> Sync GitHub</Button>
+            <Button onClick={importAll} disabled={busy}><UploadCloud className="h-4 w-4" /> Import Detected Seed Data</Button>
           </div>
         </Card>
         {status && <p className="rounded-xl border border-teal-300/20 bg-teal-400/10 px-4 py-3 text-sm text-teal-100">{status}</p>}
