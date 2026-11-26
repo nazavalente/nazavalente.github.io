@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/Textarea";
 import { createDocument, deleteDocument, deleteDuplicateDocuments, seedCollection, syncCollectionFromSeed, updateDocument } from "@/lib/firestore";
 import { normalizeArray, slugify } from "@/lib/utils";
 import { useCollection } from "@/hooks/useCollection";
-import { UploadField } from "./UploadField";
 import { DataTable } from "./DataTable";
 
 export function CollectionManager({ title, collectionName, fields, seedRows = [] }) {
@@ -195,7 +194,6 @@ export function CollectionManager({ title, collectionName, fields, seedRows = []
             if (field.type === "textarea") return <Textarea key={field.name} label={field.label} value={form[field.name] || ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} />;
             if (field.type === "array") return <Textarea key={field.name} label={`${field.label} (comma separated)`} value={Array.isArray(form[field.name]) ? form[field.name].join(", ") : form[field.name] || ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} />;
             if (field.type === "boolean") return <label key={field.name} className="flex items-center gap-3 text-sm text-slate-300"><input type="checkbox" checked={Boolean(form[field.name])} onChange={(e) => setValue(field.name, e.target.checked)} /> {field.label}</label>;
-            if (field.type === "upload") return <div key={field.name} className="grid gap-2"><Input label={field.label} value={form[field.name] ?? ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} /><UploadField label={`Upload ${field.label}`} folder={collectionName} onUploaded={(url) => setValue(field.name, url)} /></div>;
             return <Input key={field.name} label={field.label} value={form[field.name] ?? ""} onChange={(e) => setValue(field.name, e.target.value)} error={errors[field.name]} />;
           })}
           <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:justify-end">

@@ -136,7 +136,7 @@ export default function DashboardPage() {
         <Card className="premium-border flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
             <h2 className="text-2xl font-semibold text-white">Portfolio content center</h2>
-            <p className="mt-2 text-sm text-slate-400">Manage public content, media uploads, and contact messages from Firestore.</p>
+            <p className="mt-2 text-sm text-slate-400">Manage public content and contact messages from Firestore.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={removeAllDuplicates} disabled={busy}><Trash2 className="h-4 w-4" /> Remove All Duplicates</Button>
@@ -159,11 +159,11 @@ export default function DashboardPage() {
         <div className="grid gap-5 lg:grid-cols-2">
           <Card>
             <h3 className="text-lg font-semibold text-white">Recommended workflow</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-400">Import seed data, complete any missing details, upload images or certificates, then deploy Firebase rules before going public.</p>
+            <p className="mt-3 text-sm leading-6 text-slate-400">Import seed data, complete any missing details, and paste image or certificate links, then deploy the Firestore rules before going public.</p>
           </Card>
           <Card>
             <h3 className="text-lg font-semibold text-white">Production note</h3>
-            <p className="mt-3 text-sm leading-6 text-slate-400">Writes are restricted to accounts with the admin custom claim, enforced by Firestore and Storage security rules regardless of who is signed in here.</p>
+            <p className="mt-3 text-sm leading-6 text-slate-400">Writes are restricted to accounts with the admin custom claim, enforced by Firestore security rules regardless of who is signed in here.</p>
           </Card>
         </div>
       </div>

@@ -1,6 +1,6 @@
 /**
  * One-time script: sets the `admin: true` custom claim on your Firebase Auth
- * account, so Firestore/Storage rules can check `request.auth.token.admin`
+ * account, so the Firestore rules can check `request.auth.token.admin`
  * instead of hardcoding your email.
  *
  * Setup:

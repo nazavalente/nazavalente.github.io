@@ -12,7 +12,7 @@ export const projectFields = [
   { name: "status", label: "Status" },
   { name: "githubUrl", label: "GitHub URL" },
   { name: "liveUrl", label: "Live Demo URL" },
-  { name: "imageUrl", label: "Image URL", type: "upload" },
+  { name: "imageUrl", label: "Image URL" },
   { name: "createdYear", label: "Created Year" },
   { name: "isFeatured", label: "Featured", type: "boolean", table: false },
   { name: "order", label: "Order" }
@@ -63,8 +63,8 @@ export const certificateFields = [
   { name: "title", label: "Title", required: true },
   { name: "issuer", label: "Issuer" },
   { name: "year", label: "Year" },
-  { name: "certificateUrl", label: "Certificate URL", type: "upload" },
-  { name: "imageUrl", label: "Image URL", type: "upload" },
+  { name: "certificateUrl", label: "Certificate URL" },
+  { name: "imageUrl", label: "Image URL" },
   { name: "category", label: "Category" },
   { name: "order", label: "Order" }
 ];

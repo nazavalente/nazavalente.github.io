@@ -22,7 +22,6 @@ Missing links, years, exact roles, and certificate details are left empty until 
 - Lucide React
 - Firebase Authentication
 - Cloud Firestore
-- Firebase Storage
 
 ## Environment Variables
 
@@ -37,7 +36,7 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 ```
 
-Do not commit real Firebase credentials. (`NEXT_PUBLIC_*` values end up in the public JS bundle anyway; the Firestore/Storage rules are what protect the data.)
+Do not commit real Firebase credentials. (`NEXT_PUBLIC_*` values end up in the public JS bundle anyway; the Firestore rules are what protect the data.)
 
 ## Run Locally
 
@@ -62,12 +61,11 @@ npx serve@latest out
 1. Create a Firebase project.
 2. Enable Authentication with email/password.
 3. Create a Firestore database.
-4. Enable Firebase Storage.
-5. Add the Firebase web app config to `.env.local`.
-6. Create your admin user in Firebase Authentication.
-7. Grant that account the `admin` custom claim: `node scripts/set-admin-claim.mjs <serviceAccountKey.json> <admin-email>` (see the script's header comment for how to download the service account key — never commit it).
+4. Add the Firebase web app config to `.env.local`.
+5. Create your admin user in Firebase Authentication.
+6. Grant that account the `admin` custom claim: `node scripts/set-admin-claim.mjs <serviceAccountKey.json> <admin-email>` (see the script's header comment for how to download the service account key — never commit it).
 
-Admin authorization in `firebase/firestore.rules` and `firebase/storage.rules` checks `request.auth.token.admin == true`, so any account with that custom claim gets admin access — no email needs to be hardcoded in the rules.
+Admin authorization in `firebase/firestore.rules` checks `request.auth.token.admin == true`, so any account with that custom claim gets admin access — no email needs to be hardcoded in the rules.
 
 ## Deploy Firebase Rules
 
@@ -77,10 +75,9 @@ Admin authorization in `firebase/firestore.rules` and `firebase/storage.rules` c
 npm install -g firebase-tools
 firebase login
 firebase deploy --only firestore:rules
-firebase deploy --only storage
 ```
 
-Firebase is used only for Auth, Firestore, and Storage. Hosting is **not** on Firebase — always deploy with `--only`, and note that the `porto321` project's default Hosting site serves a different app (RotaTL).
+Firebase is used only for Auth and Firestore. Hosting is **not** on Firebase — always deploy with `--only`, and note that the `porto321` project's default Hosting site serves a different app (RotaTL).
 
 ## Admin Dashboard
 
@@ -119,4 +116,4 @@ Static hosting can only serve pages that existed at build time:
 
 - Contact form submissions are saved to the `contactMessages` collection.
 - Email sending is not implemented yet. Add Firebase Functions later if needed.
-- File uploads use Firebase Storage and save download URLs in Firestore.
+- There are no file uploads (Firebase Storage would need the paid Blaze plan). Images and certificates are stored as links: `imageUrl` must be a direct, publicly reachable image URL; `certificateUrl` can be any link (e.g. a Google Drive share link).
